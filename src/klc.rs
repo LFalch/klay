@@ -108,7 +108,9 @@ fn st(s: &str) -> String {
     }
 }
 
-fn parse<R: BufRead>(lines: Lines<R>) -> Option<WinKeyLayout> {
+use utf16_ext::byteorder::LE;
+
+fn parse<R: BufRead>(lines: Lines<LE, R>) -> Option<WinKeyLayout> {
     let mut cur_table = Table::None;
     let mut ret = WinKeyLayout::default();
 

@@ -2,28 +2,28 @@ pub extern crate byteorder;
 
 use std::io::{BufRead, Read, Error, ErrorKind};
 
-use byteorder::{ByteOrder, LE};
+use byteorder::ByteOrder;
 
 pub trait Utf16Read: Read {
-    fn read_u16(&mut self) -> Result<u16, Error> {
+    fn read_u16<T: ByteOrder>(&mut self) -> Result<u16, Error> {
         let mut buf = [0; 2];
         self.read_exact(&mut buf)?;
-        Ok(LE::read_u16(&buf))
+        Ok(T::read_u16(&buf))
     }
-    fn shorts(self) -> Shorts<Self>
+    fn shorts<T: ByteOrder>(self) -> Shorts<T, Self>
     where Self: Sized {
-        Shorts(self)
+        Shorts(PhantomData, self)
     }
-    fn utf16_chars(self) -> Chars<Self>
+    fn utf16_chars<T: ByteOrder>(self) -> Chars<T, Self>
     where Self: Sized {
-        Chars(self)
+        Chars(PhantomData, self)
     }
 }
 
 pub trait Utf16BufRead: BufRead {
-    fn read_utf16_line(&mut self, buf: &mut String) -> Result<usize, Error> {
+    fn read_utf16_line<T: ByteOrder>(&mut self, buf: &mut String) -> Result<usize, Error> {
         let mut len = 0;
-        for c in self.utf16_chars() {
+        for c in self.utf16_chars::<T>() {
             match c {
                 Ok(c) => {
                     buf.push(c);
@@ -40,25 +40,27 @@ pub trait Utf16BufRead: BufRead {
         }
         Ok(len)
     }
-    fn utf16_lines(self) -> Lines<Self>
+    fn utf16_lines<T: ByteOrder>(self) -> Lines<T, Self>
     where Self: Sized {
-        Lines(self)
+        Lines(PhantomData, self)
     }
 }
 
 impl<T: Read> Utf16Read for T {}
 impl<T: BufRead> Utf16BufRead for T {}
 
-#[derive(Debug)]
-pub struct Shorts<R>(R);
-#[derive(Debug)]
-pub struct Chars<R>(R);
+use std::marker::PhantomData;
 
-impl<R: Utf16Read> Iterator for Shorts<R> {
+#[derive(Debug)]
+pub struct Shorts<T: ByteOrder, R>(PhantomData<T>, R);
+#[derive(Debug)]
+pub struct Chars<T: ByteOrder, R>(PhantomData<T>, R);
+
+impl<T: ByteOrder, R: Utf16Read> Iterator for Shorts<T, R> {
     type Item = Result<u16, Error>;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            match self.0.read_u16() {
+            match self.1.read_u16::<T>() {
                 Ok(u) => break Some(Ok(u)),
                 Err(e) => match e.kind() {
                     ErrorKind::Interrupted => (),
@@ -72,10 +74,10 @@ impl<R: Utf16Read> Iterator for Shorts<R> {
 
 use std::char::decode_utf16;
 
-impl<R: Utf16Read> Iterator for Chars<R> {
+impl<T: ByteOrder, R: Utf16Read> Iterator for Chars<T, R> {
     type Item = Result<char, Error>;
     fn next(&mut self) -> Option<Self::Item> {
-        let first = match self.0.read_u16() {
+        let first = match self.1.read_u16::<T>() {
             Ok(f) => f,
             Err(ref e) if e.kind() == ErrorKind::UnexpectedEof => return None,
             Err(e) => return Some(Err(e))
@@ -83,7 +85,7 @@ impl<R: Utf16Read> Iterator for Chars<R> {
         match decode_utf16(Some(first)).next().unwrap() {
             Ok(c) => Some(Ok(c)),
             Err(_) => {
-                let snd = match self.0.read_u16() {
+                let snd = match self.1.read_u16::<T>() {
                     Ok(f) => f,
                     Err(ref e) if e.kind() == ErrorKind::UnexpectedEof => return None,
                     Err(e) => return Some(Err(e))
@@ -96,14 +98,14 @@ impl<R: Utf16Read> Iterator for Chars<R> {
 }
 
 #[derive(Debug)]
-pub struct Lines<B>(B);
+pub struct Lines<T: ByteOrder, B>(PhantomData<T>, B);
 
-impl<B: Utf16BufRead> Iterator for Lines<B> {
+impl<T: ByteOrder, B: Utf16BufRead> Iterator for Lines<T, B> {
     type Item = Result<String, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut buf = String::new();
-        match self.0.read_utf16_line(&mut buf) {
+        match self.1.read_utf16_line::<T>(&mut buf) {
             Ok(0) => None,
             Ok(_n) => {
                 if buf.ends_with("\n") {
