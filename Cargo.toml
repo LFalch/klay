@@ -3,6 +3,9 @@ name = "key-layout"
 version = "0.1.0"
 authors = ["lucas <lucas@wasd.dk>"]
 
+[lib]
+name = "utf16_ext"
+
 [dependencies]
 byteorder = "~1"
 linked-hash-map = "0.5"

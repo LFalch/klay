@@ -1,4 +1,7 @@
-use std::str::Lines;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
+use utf16_ext::{Lines, Utf16BufRead};
 use linked_hash_map::LinkedHashMap;
 
 type ScanCode = u8;
@@ -105,11 +108,12 @@ fn st(s: &str) -> String {
     }
 }
 
-fn parse(lines: Lines) -> Option<WinKeyLayout> {
+fn parse<R: BufRead>(lines: Lines<R>) -> Option<WinKeyLayout> {
     let mut cur_table = Table::None;
     let mut ret = WinKeyLayout::default();
 
     for line in lines {
+        let line = line.unwrap();
         let args = line.split('\t')
             .take_while(|a| !a.starts_with("//") && !a.starts_with(";"))
             .filter(|s| !s.is_empty());
@@ -178,12 +182,7 @@ fn parse(lines: Lines) -> Option<WinKeyLayout> {
     Some(ret)
 }
 
-use std::fs::File;
-use utf16::ReadShort;
-
 pub fn read_file(file: &str) -> Option<WinKeyLayout> {
-    let mut f = File::open(file).unwrap();
-    let s: Vec<_> = f.shorts().collect();
-    let s = String::from_utf16(&s).unwrap();
-    parse(s.lines())
+    let f = BufReader::new(File::open(file).unwrap());
+    parse(f.utf16_lines())
 }
