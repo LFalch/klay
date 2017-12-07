@@ -4,3 +4,5 @@ version = "0.1.0"
 authors = ["lucas <lucas@wasd.dk>"]
 
 [dependencies]
+byteorder = "~1"
+linked-hash-map = "0.5"
