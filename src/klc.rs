@@ -3,20 +3,52 @@ use linked_hash_map::LinkedHashMap;
 
 type ScanCode = u8;
 
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CapsLockBehaviour {
+    Never = 0,
+    ShiftOnCaps = 1,
+    ShiftOnCapsAlt = 4,
+    ShiftOnCapsAlways = 5,
+    // Unsupported for now
+    // SgCap = "SGCap"
+}
+
+impl From<u8> for CapsLockBehaviour {
+    fn from(n: u8) -> Self {
+        use self::CapsLockBehaviour::*;
+        match n {
+            0 => Never,
+            1 => ShiftOnCaps,
+            4 => ShiftOnCapsAlt,
+            5 => ShiftOnCapsAlways,
+            _ => panic!("No such behaviour")
+        }
+    }
+}
+
+impl ::std::ops::Add for CapsLockBehaviour {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        (self as u8 + rhs as u8).into()
+    }
+}
+
 #[derive(Debug)]
 pub struct Key {
     virtual_key: String,
-    cap: u8,
-    /// Normal
-    state0: Option<char>,
-    /// Shift
-    state1: Option<char>,
-    /// Ctrl
-    state2: Option<char>,
-    /// Ctrl + Alt
-    state6: Option<char>,
-    /// Shift + Ctrl + Alt
-    state7: Option<char>,
+    /// Capslock Behaviour
+    cap: CapsLockBehaviour,
+    /// Normal (shiftstate 0)
+    normal: Option<char>,
+    /// Shift (shiftstate 1)
+    shift: Option<char>,
+    /// Ctrl (shiftstate 2)
+    ctrl: Option<char>,
+    /// Ctrl + Alt (aka. AltGr) (shiftstate 6)
+    ctrl_alt: Option<char>,
+    /// Shift + Ctrl + Alt (aka. Shift+AltGr) (shiftstate 7)
+    shift_ctrl_alt: Option<char>,
 }
 
 #[derive(Debug, Default)]
@@ -56,14 +88,9 @@ fn read_char(mut hex_codepoint: &str) -> Option<char> {
     if hex_codepoint.ends_with('@') {
         hex_codepoint = &hex_codepoint[..hex_codepoint.len()-1];
     }
-    let uint = u32::from_str_radix(hex_codepoint, 16);
-    match uint {
-        Ok(u) => ::std::char::from_u32(u),
-        Err(e) => {
-            // TODO Handle ascii normally
-            unimplemented!()
-        }
-    }
+    hex_codepoint.parse().ok().or_else(|| {
+        u32::from_str_radix(hex_codepoint, 16).ok().and_then(|u| ::std::char::from_u32(u))
+    })
 }
 
 fn read_hb(hex_byte: &str) -> Option<u8> {
@@ -83,7 +110,9 @@ fn parse(lines: Lines) -> Option<WinKeyLayout> {
     let mut ret = WinKeyLayout::default();
 
     for line in lines {
-        let args = line.split('\t').take_while(|a| !a.starts_with("//")).filter(|a| !a.is_empty());
+        let args = line.split('\t')
+            .take_while(|a| !a.starts_with("//") && !a.starts_with(";"))
+            .filter(|s| !s.is_empty());
         let args: Vec<_> = args.collect();
         if args.is_empty() {
             continue
@@ -116,16 +145,14 @@ fn parse(lines: Lines) -> Option<WinKeyLayout> {
                 // HACK Ignore shift states
                 Table::ShiftState => (),
                 Table::Layout => {
-                    println!("Line: {}", line);
-                    println!("Args: {:?}", args);
                     let key = Key {
                         virtual_key: args[1].to_owned(),
-                        cap: args[2].parse().ok()?,
-                        state0: read_char(args[3]),
-                        state1: read_char(args[4]),
-                        state2: read_char(args[5]),
-                        state6: read_char(args[6]),
-                        state7: read_char(args[7]),
+                        cap: args[2].parse::<u8>().ok()?.into(),
+                        normal: read_char(args[3]),
+                        shift: read_char(args[4]),
+                        ctrl: read_char(args[5]),
+                        ctrl_alt: read_char(args[6]),
+                        shift_ctrl_alt: read_char(args[7]),
                     };
                     ret.layout.insert(read_hb(args[0])?, key);
                 },
@@ -143,7 +170,7 @@ fn parse(lines: Lines) -> Option<WinKeyLayout> {
                 }
                 Table::Descriptions => ret.description = args[1].to_owned(),
                 Table::LanguageNames => ret.language_name = args[1].to_owned(),
-                Table::None => panic!("Unknown key `{}'", args[0])
+                Table::None => panic!("Unknown key `{}' with {:?}", args[0], &args[1..])
             }
         }
     }

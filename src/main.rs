@@ -5,6 +5,6 @@ mod klc;
 mod utf16;
 
 fn main() {
-    let klc = klc::read_file("danex.klc").unwrap();
+    let klc = klc::read_file("test.klc").unwrap();
     println!("Layout:\n{:#?}", klc);
 }
