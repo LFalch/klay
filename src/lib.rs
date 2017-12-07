@@ -4,6 +4,9 @@ use std::io::{BufRead, Read, Error, ErrorKind};
 
 use byteorder::ByteOrder;
 
+mod auto;
+pub use auto::*;
+
 pub trait Utf16Read: Read {
     fn read_u16<T: ByteOrder>(&mut self) -> Result<u16, Error> {
         let mut buf = [0; 2];
