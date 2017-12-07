@@ -1,0 +1,6 @@
+[package]
+name = "key-layout"
+version = "0.1.0"
+authors = ["lucas <lucas@wasd.dk>"]
+
+[dependencies]
