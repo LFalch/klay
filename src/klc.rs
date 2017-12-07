@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use utf16_ext::{Lines, Utf16BufRead};
+use utf16_ext::{AutoEndianLines, AutoEndianReader};
 use linked_hash_map::LinkedHashMap;
 
 type ScanCode = u8;
@@ -108,9 +108,7 @@ fn st(s: &str) -> String {
     }
 }
 
-use utf16_ext::byteorder::LE;
-
-fn parse<R: BufRead>(lines: Lines<LE, R>) -> Option<WinKeyLayout> {
+fn parse<R: BufRead>(lines: AutoEndianLines<R>) -> Option<WinKeyLayout> {
     let mut cur_table = Table::None;
     let mut ret = WinKeyLayout::default();
 
@@ -137,7 +135,7 @@ fn parse<R: BufRead>(lines: Lines<LE, R>) -> Option<WinKeyLayout> {
             "KEYNAME_DEAD" => cur_table = Table::KeynameDead,
             "DESCRIPTIONS" => cur_table = Table::Descriptions,
             "LANGUAGENAMES" => cur_table = Table::LanguageNames,
-            "\u{feff}KBD" => {
+            "KBD" => {
                 ret.id = args[1].to_owned();
                 ret.name = st(args[2]);
             }
@@ -185,6 +183,6 @@ fn parse<R: BufRead>(lines: Lines<LE, R>) -> Option<WinKeyLayout> {
 }
 
 pub fn read_file(file: &str) -> Option<WinKeyLayout> {
-    let f = BufReader::new(File::open(file).unwrap());
+    let f = AutoEndianReader::new_auto_bom(BufReader::new(File::open(file).unwrap())).unwrap();
     parse(f.utf16_lines())
 }
