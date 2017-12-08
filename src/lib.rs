@@ -2,17 +2,12 @@ pub extern crate byteorder;
 
 use std::io::{Read, Error, ErrorKind};
 
-use byteorder::ByteOrder;
+use byteorder::{ByteOrder, ReadBytesExt};
 
 mod auto;
 pub use auto::*;
 
-pub trait Utf16ReadExt: Read {
-    fn read_u16<T: ByteOrder>(&mut self) -> Result<u16, Error> {
-        let mut buf = [0; 2];
-        self.read_exact(&mut buf)?;
-        Ok(T::read_u16(&buf))
-    }
+pub trait Utf16ReadExt: ReadBytesExt {
     fn shorts<T: ByteOrder>(self) -> Shorts<T, Self>
     where Self: Sized {
         Shorts(PhantomData, self)
