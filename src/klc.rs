@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
 
 use utf16_ext::{AutoEndianLines, AutoEndianReader};
 use linked_hash_map::LinkedHashMap;
@@ -108,7 +107,7 @@ fn st(s: &str) -> String {
     }
 }
 
-fn parse<R: BufRead>(lines: AutoEndianLines<R>) -> Option<WinKeyLayout> {
+fn parse(lines: AutoEndianLines<File>) -> Option<WinKeyLayout> {
     let mut cur_table = Table::None;
     let mut ret = WinKeyLayout::default();
 
@@ -182,7 +181,9 @@ fn parse<R: BufRead>(lines: AutoEndianLines<R>) -> Option<WinKeyLayout> {
     Some(ret)
 }
 
-pub fn read_file(file: &str) -> Option<WinKeyLayout> {
-    let f = AutoEndianReader::new_auto_bom(BufReader::new(File::open(file).unwrap())).unwrap();
+use std::path::Path;
+
+pub fn read_file<P: AsRef<Path>>(file: P) -> Option<WinKeyLayout> {
+    let f = AutoEndianReader::new_auto_bom(File::open(file).unwrap()).unwrap();
     parse(f.utf16_lines())
 }
