@@ -73,6 +73,7 @@ pub struct WinKeyLayout {
 
 enum Table {
     None,
+    Attributes,
     ShiftState,
     Layout,
     Deadkey(char),
@@ -122,6 +123,7 @@ fn parse(lines: AutoEndianLines<File>) -> Option<WinKeyLayout> {
         }
 
         match args[0] {
+            "ATTRIBUTES" => cur_table = Table::Attributes,
             "SHIFTSTATE" => cur_table = Table::ShiftState,
             "LAYOUT" => cur_table = Table::Layout,
             "DEADKEY" => {
@@ -145,7 +147,8 @@ fn parse(lines: AutoEndianLines<File>) -> Option<WinKeyLayout> {
             "VERSION" => ret.version = args[1].to_owned(),
             "ENDKBD" => break,
             _ => match cur_table {
-                // HACK Ignore shift states
+                // HACK Ignore shift states and attributes
+                Table::Attributes => (),
                 Table::ShiftState => (),
                 Table::Layout => {
                     let key = Key {
