@@ -1,7 +1,6 @@
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write, Result};
 
-use utf16_ext::{AutoEndianLines, AutoEndianReader};
+use utf16_ext::{AutoWriter, AutoEndianLines, AutoEndianReader};
 use linked_hash_map::LinkedHashMap;
 
 type ScanCode = u8;
@@ -65,7 +64,7 @@ pub struct WinKeyLayout {
     version: String,
     layout: LinkedHashMap<ScanCode, Key>,
     deadkeys: LinkedHashMap<char, LinkedHashMap<char, char>>,
-    key_names: LinkedHashMap<u8, String>,
+    key_names: LinkedHashMap<ScanCode, String>,
     key_names_ext: LinkedHashMap<u8, String>,
     keynames_dead: LinkedHashMap<char, String>,
     description: String,
@@ -185,9 +184,118 @@ fn parse<R: Read>(lines: AutoEndianLines<R>) -> Option<WinKeyLayout> {
     Some(ret)
 }
 
+fn key_arg<W: Write>(wr: &mut AutoWriter<W>, key: &str, arg: &str) -> Result<()> {
+    if !arg.is_empty() {
+        wr.write_utf16_string(key)?;
+        wr.write_utf16_string("\t\"")?;
+        wr.write_utf16_string(arg)?;
+        wr.write_utf16_string("\"\r\n\r\n")?;
+    }
+    Ok(())
+}
+fn quote_multi(s: &str) -> String {
+    if s.chars().any(|c| c.is_whitespace()) {
+        format!("\"{}\"", s)
+    } else {
+        s.to_owned()
+    }
+}
+
 impl WinKeyLayout {
     pub fn from_reader<R: Read>(reader: R) -> Option<Self> {
         let f = AutoEndianReader::new_auto_bom(reader).unwrap();
         parse(f.utf16_lines())
+    }
+    pub fn write<W: Write>(&self, writer: W) -> Result<()> {
+        // To make sure we don't forget anything we destructure it
+        // This will make it so compilation fails if `WinKeyLayout` gains new fields
+        let &WinKeyLayout{
+            ref id,
+            ref name,
+            ref copyright,
+            ref company,
+            ref locale_name,
+            ref locale_id,
+            ref version,
+            ref layout,
+            ref deadkeys,
+            ref key_names,
+            ref key_names_ext,
+            ref keynames_dead,
+            ref description,
+            ref language_name,
+        } = self;
+
+        let mut wr = AutoWriter::new_little(writer)?;
+        wr.write_utf16_string("KBD\t")?;
+        wr.write_utf16_string(id)?;
+        wr.write_utf16_string("\t\"")?;
+        wr.write_utf16_string(name)?;
+        wr.write_utf16_string("\"\r\n\r\n")?;
+
+        key_arg(&mut wr, "COPYRIGHT", copyright)?;
+        key_arg(&mut wr, "COMPANY", company)?;
+        key_arg(&mut wr, "LOCALENAME", locale_name)?;
+        key_arg(&mut wr, "LOCALEID", locale_id)?;
+        wr.write_utf16_string("VERSION\t")?;
+        wr.write_utf16_string(version)?;
+        wr.write_utf16_string("\r\n\r\n")?;
+        wr.write_utf16_string("SHIFTSTATE\r\n\r\n0\r\n1 // Shift\r\n2 // Ctrl\r\n6 // AltGr\r\n7 // Shift AltGr\r\n\r\n")?;
+
+        wr.write_utf16_string("LAYOUT\t\t;an '@' indicates dead key\r\n\r\n")?;
+        let k = |c: Option<char>| {
+            if let Some(c) = c {
+                format!("{:04x}{}", c as u32, if deadkeys.contains_key(&c){"@"}else{""})
+            } else {
+                "-1".to_owned()
+            }
+        };
+
+        for (scancode, key) in layout {
+            let &Key{ref virtual_key, cap, normal, shift, ctrl, ctrl_alt, shift_ctrl_alt} = key;
+            let s = format!("{:02x}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\r\n",
+                scancode, virtual_key, cap as u8, k(normal), k(shift), k(ctrl), k(ctrl_alt), k(shift_ctrl_alt));
+            wr.write_utf16_string(&s)?;
+        }
+        wr.write_utf16_string("\r\n\r\n")?;
+
+        if !deadkeys.is_empty() {
+            for (&deadkey, mappings) in deadkeys {
+                wr.write_utf16_string(&format!("DEADKEY\t{:04x}\r\n\r\n", deadkey as u32))?;
+                for (&a, &b) in mappings {
+                    let s = format!("{:04x}\t{:04x}\t// {} -> {}\r\n", a as u32, b as u32, a, b);
+                    wr.write_utf16_string(&s)?;
+                }
+                wr.write_utf16_string("\r\n")?;
+            }
+            wr.write_utf16_string("\r\n")?;
+        }
+
+        wr.write_utf16_string("KEYNAME\r\n\r\n")?;
+        for (scancode, name) in key_names {
+            wr.write_utf16_string(&format!("{:02x}\t{}\r\n", scancode, quote_multi(name)))?;
+        }
+        wr.write_utf16_string("\r\n")?;
+
+        wr.write_utf16_string("KEYNAME_EXT\r\n\r\n")?;
+        for (scancode, name) in key_names_ext {
+            wr.write_utf16_string(&format!("{:02x}\t{}\r\n", scancode, quote_multi(name)))?;
+        }
+        wr.write_utf16_string("\r\n")?;
+
+        if !keynames_dead.is_empty() {
+            wr.write_utf16_string("KEYNAME_DEAD\r\n\r\n")?;
+            for (&c, name) in keynames_dead {
+                wr.write_utf16_string(&format!("{:04x}\t\"{}\"\r\n", c as u32, name))?;
+            }
+            wr.write_utf16_string("\r\n")?;
+        }
+
+        wr.write_utf16_string("DESCRIPTIONS\r\n\r\n0409\t")?;
+        wr.write_utf16_string(description)?;
+        wr.write_utf16_string("\r\n\r\nLANGUAGENAMES\r\n\r\n0409\t")?;
+        wr.write_utf16_string(language_name)?;
+        wr.write_utf16_string("\r\n\r\nENDKBD\r\n")?;
+        Ok(())
     }
 }

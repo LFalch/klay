@@ -8,10 +8,14 @@ mod klc;
 use klc::WinKeyLayout;
 
 fn main() {
-    let arg = args_os().skip(1).next().unwrap();
+    let mut args = args_os().skip(1);
+    let arg = args.next().unwrap();
     let file = File::open(arg).unwrap();
 
-    let klc = WinKeyLayout::from_reader(file).unwrap();
 
-    println!("Layout:\n{:#?}", klc);
+    if let Some(arg) = args.next() {
+        let klc = WinKeyLayout::from_reader(file).unwrap();
+        let file = File::create(arg).unwrap();
+        klc.write(file).unwrap();
+    }
 }

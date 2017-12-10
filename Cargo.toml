@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["lucas <lucas@wasd.dk>"]
 
 [dependencies]
-utf16-ext = "0.0.3"
+utf16-ext = "0.1.0"
 linked-hash-map = "0.5"
