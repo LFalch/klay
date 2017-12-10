@@ -6,3 +6,7 @@ authors = ["lucas <lucas@wasd.dk>"]
 [dependencies]
 utf16-ext = "0.1.0"
 linked-hash-map = "0.5"
+serde-xml-rs = "=0.2.1"
+xml-rs = "0.3.6"
+serde = "~1"
+serde_derive = "~1"
