@@ -38,37 +38,37 @@ impl ::std::ops::Add for CapsLockBehaviour {
 
 #[derive(Debug)]
 pub struct Key {
-    virtual_key: String,
+    pub virtual_key: String,
     /// Capslock Behaviour
-    cap: CapsLockBehaviour,
+    pub cap: CapsLockBehaviour,
     /// Normal (shiftstate 0)
-    normal: Option<char>,
+    pub normal: Option<char>,
     /// Shift (shiftstate 1)
-    shift: Option<char>,
+    pub shift: Option<char>,
     /// Ctrl (shiftstate 2)
-    ctrl: Option<char>,
+    pub ctrl: Option<char>,
     /// Ctrl + Alt (aka. AltGr) (shiftstate 6)
-    ctrl_alt: Option<char>,
+    pub ctrl_alt: Option<char>,
     /// Shift + Ctrl + Alt (aka. Shift+AltGr) (shiftstate 7)
-    shift_ctrl_alt: Option<char>,
+    pub shift_ctrl_alt: Option<char>,
 }
 
 #[derive(Debug, Default)]
 pub struct WinKeyLayout {
-    id: String,
-    name: String,
-    copyright: String,
-    company: String,
-    locale_name: String,
-    locale_id: String,
-    version: String,
-    layout: LinkedHashMap<ScanCode, Key>,
-    deadkeys: LinkedHashMap<char, LinkedHashMap<char, char>>,
-    key_names: LinkedHashMap<ScanCode, String>,
-    key_names_ext: LinkedHashMap<u8, String>,
-    keynames_dead: LinkedHashMap<char, String>,
-    description: String,
-    language_name: String,
+    pub id: String,
+    pub name: String,
+    pub copyright: String,
+    pub company: String,
+    pub locale_name: String,
+    pub locale_id: String,
+    pub version: String,
+    pub layout: LinkedHashMap<ScanCode, Key>,
+    pub deadkeys: LinkedHashMap<char, LinkedHashMap<char, char>>,
+    pub key_names: LinkedHashMap<ScanCode, String>,
+    pub key_names_ext: LinkedHashMap<u8, String>,
+    pub keynames_dead: LinkedHashMap<char, String>,
+    pub description: String,
+    pub language_name: String,
 }
 
 enum Table {
