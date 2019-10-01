@@ -107,6 +107,11 @@ pub enum CharOrDead {
     Char(char),
     Dead(Box<str>),
 }
+impl Default for CharOrDead {
+    fn default() -> Self {
+        Self::Char('\0')
+    }
+}
 impl Display for CharOrDead {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -124,18 +129,23 @@ pub struct Character {
     pub normal: CharOrDead,
     pub shift: CharOrDead,
 }
+impl Character {
+    fn is_zero(&self) -> bool {
+        self.normal == CharOrDead::Char('\0') && self.shift == CharOrDead::Char('\0')
+    }
+}
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Output {
     pub normal: Character,
-    pub altgr: Option<Character>,
+    pub altgr: Character,
 }
 impl Display for Output {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Character{ref normal, ref shift} = self.normal;
 
         write!(f, "{:>10}, {:>10}", normal, shift)?;
-        if let Some(Character{ref normal, ref shift}) = self.altgr {
-            write!(f, ", {:>12}, {:>12}", normal, shift)?;
+        if !self.altgr.is_zero() {
+            write!(f, ", {:>12}, {:>12}", self.altgr.normal, self.altgr.shift)?;
         }
         Ok(())
     }
@@ -194,16 +204,12 @@ impl PartialXkbSymbols {
                 });
 
             let normal = Character {
-                normal: chars.next().unwrap(),
-                shift: chars.next().unwrap(),
+                normal: chars.next().unwrap_or_default(),
+                shift: chars.next().unwrap_or_default(),
             };
-            let altgr = if let Some(next) = chars.next() {
-                Some(Character{
-                    normal: next,
-                    shift: chars.next().unwrap(),
-                })
-            } else {
-                None
+            let altgr = Character{
+                normal: chars.next().unwrap_or_default(),
+                shift: chars.next().unwrap_or_default(),
             };
             
             self.keys.insert(key, Output{normal, altgr});

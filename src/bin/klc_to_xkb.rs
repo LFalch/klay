@@ -74,20 +74,17 @@ fn char_or_dead(c: char, deads: &[char]) -> CharOrDead {
 }
 
 fn convert_output(win_key: KlcKey, deads: &[char]) -> Output {
-    let normal = win_key.normal.unwrap();
-    let shift = win_key.shift.unwrap();
+    let normal = win_key.normal.unwrap_or('\0');
+    let shift = win_key.shift.unwrap_or('\0');
     let normal = Character {
         normal: char_or_dead(normal, deads),
         shift: char_or_dead(shift, deads),
     };
-
-    let altgr = if let (Some(normal), Some(shift)) = (win_key.ctrl_alt, win_key.shift_ctrl_alt) {
-        Some(Character {
-            normal: char_or_dead(normal, deads),
-            shift: char_or_dead(shift, deads),
-        })
-    } else {
-        None
+    let altgr_normal = win_key.ctrl_alt.unwrap_or('\0');
+    let altgr_shift = win_key.shift_ctrl_alt.unwrap_or('\0');
+    let altgr = Character {
+        normal: char_or_dead(altgr_normal, deads),
+        shift: char_or_dead(altgr_shift, deads),
     };
 
     Output {
@@ -115,6 +112,7 @@ fn convert(win_layout: WinKeyLayout) -> Layout {
         };
         let output = convert_output(win_key, &deads);
 
+        // TODO Check if superset instead
         if let Some(out) = default_keys.get(&key_code) {
             if out == &output {
                 continue;
