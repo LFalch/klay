@@ -3,7 +3,7 @@ use std::io::{Read, Write, Result};
 use utf16_ext::{AutoWriter, AutoEndianLines, AutoEndianReader};
 use linked_hash_map::LinkedHashMap;
 
-type ScanCode = u8;
+pub type ScanCode = u8;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -29,10 +29,10 @@ impl From<u8> for CapsLockBehaviour {
     }
 }
 
-impl ::std::ops::Add for CapsLockBehaviour {
+impl ::std::ops::BitOr for CapsLockBehaviour {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self {
-        (self as u8 + rhs as u8).into()
+    fn bitor(self, rhs: Self) -> Self {
+        (self as u8 | rhs as u8).into()
     }
 }
 
@@ -163,7 +163,7 @@ fn parse<R: Read>(lines: AutoEndianLines<R>) -> Option<WinKeyLayout> {
                     ret.layout.insert(read_hb(args[0])?, key);
                 },
                 Table::Deadkey(ref k) => {
-                    ret.deadkeys.get_mut(k)?.insert(read_char(args[0])?, (read_char(args[1])?));
+                    ret.deadkeys.get_mut(k)?.insert(read_char(args[0])?, read_char(args[1])?);
                 }
                 Table::Keyname => {
                     ret.key_names.insert(read_hb(args[0])?, st(args[1]));

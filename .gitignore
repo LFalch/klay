@@ -1,4 +1,3 @@
 /target/
 **/*.rs.bk
-*.klc
-*.keylayout
+/keymaps/
