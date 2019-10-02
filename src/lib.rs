@@ -20,11 +20,9 @@ pub mod convert {
         ($win_to_linux:ident, $linux_to_win:ident; $(
             $win_code:expr => $linux_code:ident,
         )*) => {
-            pub fn $win_to_linux(k: ScanCode) -> Option<Key> {
+            pub fn $win_to_linux(k: ScanCode) -> Key {
                 match k {
-                    $( $win_code => Some(Key::$linux_code), )*
-                    // TODO remove these hardcoded non-convertible scan codes
-                    0x53 => None,
+                    $( $win_code => Key::$linux_code, )*
                     b => unimplemented!("{:02x}", b),
                 }
             }
@@ -86,6 +84,6 @@ pub mod convert {
         0x35 => AB10,
         0x39 => SPCE,
         0x56 => LSGT,
-        // 0x53 => comma on keypad,
+        0x53 => KPDL,
     }
 }

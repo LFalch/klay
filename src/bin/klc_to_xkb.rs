@@ -54,7 +54,7 @@ fn default_keys(p: &str) -> BTreeMap<Key, Output> {
 
 use std::io::{Write, stdin, stdout};
 
-fn char_or_dead(c: char, deads: &[char]) -> CharOrDead {
+fn char_or_dead(c: char, deads: &[char]) -> Character {
     if deads.contains(&c) {
         println!("Deadkey `{}' detected.", c);
         print!("Please enter x11 deadkey name (leave empty to ignore the deadkey): dead_");
@@ -64,32 +64,26 @@ fn char_or_dead(c: char, deads: &[char]) -> CharOrDead {
         line = line.trim().to_owned();
 
         if line.is_empty() {
-            CharOrDead::Char(c)
+            Character::Char(c)
         } else {
-            CharOrDead::Dead(line.into_boxed_str())
+            Character::Dead(line.into_boxed_str())
         }
     } else {
-        CharOrDead::Char(c)
+        Character::Char(c)
     }
 }
 
 fn convert_output(win_key: KlcKey, deads: &[char]) -> Output {
     let normal = win_key.normal.unwrap_or('\0');
     let shift = win_key.shift.unwrap_or('\0');
-    let normal = Character {
-        normal: char_or_dead(normal, deads),
-        shift: char_or_dead(shift, deads),
-    };
-    let altgr_normal = win_key.ctrl_alt.unwrap_or('\0');
+    let altgr = win_key.ctrl_alt.unwrap_or('\0');
     let altgr_shift = win_key.shift_ctrl_alt.unwrap_or('\0');
-    let altgr = Character {
-        normal: char_or_dead(altgr_normal, deads),
-        shift: char_or_dead(altgr_shift, deads),
-    };
 
     Output {
-        normal,
-        altgr
+        normal: char_or_dead(normal, deads),
+        shift: char_or_dead(shift, deads),
+        altgr: char_or_dead(altgr, deads),
+        altgr_shift: char_or_dead(altgr_shift, deads),
     }
 }
 
@@ -104,17 +98,12 @@ fn convert(win_layout: WinKeyLayout) -> Layout {
     let default_keys = default_keys("dk(basic)");
 
     for (scan_code, win_key) in win_layout.layout {
-        let key_code = if let Some(kc) = win_to_linux(scan_code) {
-            kc
-        } else {
-            eprintln!("skipped {:?}", scan_code);
-            continue;
-        };
-        let output = convert_output(win_key, &deads);
+        let key_code = win_to_linux(scan_code);
+        let mut output = convert_output(win_key, &deads);
 
-        // TODO Check if superset instead
-        if let Some(out) = default_keys.get(&key_code) {
-            if out == &output {
+        if let Some(def_out) = default_keys.get(&key_code) {
+            output |= def_out.clone();
+            if def_out == &output {
                 continue;
             }
         }
