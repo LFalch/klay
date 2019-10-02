@@ -27,17 +27,26 @@ fn load(p: &str) -> Layout {
     Layout::from_reader(file).unwrap()
 }
 
-fn split_to_file_partial(s: &str) -> (&str, &str) {
-    s.find('(')
-        .map(|i| (&s[..i], &s[i+1..s.len()-1]))
-        .unwrap_or_else(|| (s, "basic"))
+fn split_to_file_partial(s: &str) -> (&str, Option<(&str)>) {
+    let mut path = s;
+    let part = s
+        .find('(')
+        .map(|i| {
+            path = &s[..i];
+            &s[i+1..s.len()-1]
+        });
+    (path, part)
 }
 
 fn default_keys(p: &str) -> BTreeMap<Key, Output> {
     let (path, part) = split_to_file_partial(p);
 
     let lay = load(path);
-    let part = lay.get_partial(part).unwrap();
+    let part = if let Some(part) = part {
+        lay.get_partial(part).unwrap()
+    } else {
+        &lay.default_partial
+    };
 
     let mut base = if let Some(ref inc) = part.include {
         default_keys(inc)

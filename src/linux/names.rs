@@ -17,7 +17,9 @@ impl BiMap {
     #[inline]
     fn insert(&mut self, name: &'static str, c: char) {
         self.name_char.insert(name, c);
-        self.char_name.insert(c, name);
+        if !self.char_name.contains_key(&c) {
+            self.char_name.insert(c, name);
+        }
     }
     #[inline]
     pub fn get_char(&self, name: &str) -> Option<char> {
