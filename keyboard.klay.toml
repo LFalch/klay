@@ -1,0 +1,25 @@
+[metadata]
+name = "Danish - Extended"
+description = "Danish - IPA Extended"
+short = "dar"
+locale = "da-DK"
+version = "0.1"
+author = "LFalch"
+
+[keymap]
+e01 = ['1', '!', '¹', '¡' ]
+e02 = ['2', '"', '²', "@"]
+e03 = ['3', '#', '³', '£' ]
+e04 = ['4', '¤', '$', '¼' ]
+e05 = ['5', '%', '½', 'ˈ' ]
+e06 = ['6', '*', 'circum', 'f' ]
+e07 = ['7', '&', '{', '§' ]
+e08 = ['8', '*', '[', '«' ]
+e09 = ['9', '(', ']', '»' ]
+e10 = ['0', ')', '}', '°' ]
+e11 = ['-', '_', '\', '?' ]
+e12 = ['=', '+', '', '˛']
+
+[special.circum]
+# Doesn't work well yet
+deadkey = '^'

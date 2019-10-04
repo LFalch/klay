@@ -1,15 +1,26 @@
 [package]
-name = "key-layout"
+name = "klay"
 version = "0.1.0"
 authors = ["lucas <lucas@wasd.dk>"]
 edition = "2018"
 build = "build.rs"
 
 [dependencies]
-utf16-ext = "0.1.0"
-linked-hash-map = "0.5"
-serde-xml-rs = "=0.2.1"
-xml-rs = "0.3.6"
-serde = "~1"
-serde_derive = "~1"
+utf16-ext = { version = "0.1.0", optional = true}
+linked-hash-map = { version = "0.5", optional = true}
+serde-xml-rs = { version = "=0.2.1", optional = true }
+xml-rs = { version =  "0.3.6", optional = true }
+toml = "0.5"
+serde = { version = "~1", features = ["derive"] }
 lazy_static = "1"
+
+[features]
+default = ["windows", "linux"]
+macos = ["serde-xml-rs", "xml-rs"]
+windows = ["utf16-ext", "linked-hash-map"]
+linux = []
+
+[[bin]]
+name = "x11_name"
+no-default-features = true
+required-features = ["linux"]

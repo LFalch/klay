@@ -1,6 +1,6 @@
-use key_layout::linux::*;
-use key_layout::klc::{Key as KlcKey, WinKeyLayout};
-use key_layout::convert::win_to_linux;
+use klay::linux::*;
+use klay::klc::{Key as KlcKey, WinKeyLayout};
+use klay::convert::win_to_linux;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

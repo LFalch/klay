@@ -1,4 +1,4 @@
-use key_layout::linux::Layout;
+use klay::linux::Layout;
 
 use std::fs::File;
 use std::env::args;

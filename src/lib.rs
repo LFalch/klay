@@ -1,17 +1,186 @@
-#[macro_use]
-extern crate serde_derive;
-
+#[cfg(feature = "macos")]
 mod macos {
     pub mod keylayout;
 }
+#[cfg(feature = "windows")]
 mod windows {
     pub mod klc;
 }
+#[cfg(feature = "linux")]
 pub mod linux;
 
+#[cfg(feature = "macos")]
 pub use macos::keylayout;
+#[cfg(feature = "windows")]
 pub use windows::klc;
 
+use std::collections::BTreeMap;
+use std::convert::TryFrom;
+use std::fmt::{self, Display};
+use serde::{Serialize, Deserialize};
+use toml::ser;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KlayLayout {
+    pub metadata: Metadata,
+    // TODO: This doesn't work for whatver reason
+    pub keymap: BTreeMap<KeyboardKey, Outs>,
+    pub special: BTreeMap<Box<str>, Special>,
+}
+
+impl KlayLayout {
+    pub fn from_str(s: &str) -> Result<Self, toml::de::Error> {
+        toml::from_str(s)
+    }
+    pub fn to_string(&self) -> Result<String, ser::Error> {
+        let mut s = String::with_capacity(1024);
+        self.serialize(ser::Serializer::new(&mut s).pretty_string(true))?;
+        Ok(s)
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum KeyboardKey {
+    TLD,
+    E01,
+    E02,
+    E03,
+    E04,
+    E05,
+    E06,
+    E07,
+    E08,
+    E09,
+    E10,
+    #[serde(alias = "pls")]
+    E11,
+    #[serde(alias = "act")]
+    E12,
+    D01,
+    D02,
+    D03,
+    D04,
+    D05,
+    D06,
+    D07,
+    D08,
+    D09,
+    D10,
+    D11,
+    D12,
+    C01,
+    C02,
+    C03,
+    C04,
+    C05,
+    C06,
+    C07,
+    C08,
+    C09,
+    C10,
+    C11,
+    BKS,
+    LGT,
+    B01,
+    B02,
+    B03,
+    B04,
+    B05,
+    B06,
+    B07,
+    #[serde(alias = "cma")]
+    B08,
+    #[serde(alias = "per")]
+    B09,
+    #[serde(alias = "min")]
+    B10,
+    SPC,
+    KPD,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "Vec<Out>", into = "[Out; 4]")]
+pub struct Outs {
+    normal: Out,
+    shift: Out,
+    altgr: Out,
+    altgr_shift: Out,
+}
+
+impl Into<[Out; 4]> for Outs {
+    fn into(self) -> [Out; 4] {
+        let Outs {normal, shift, altgr, altgr_shift} = self;
+        [normal, shift, altgr, altgr_shift]
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TooManyOuts;
+
+impl Display for TooManyOuts {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "Too many outputs set".fmt(f)
+    }
+}
+
+impl TryFrom<Vec<Out>> for Outs {
+    type Error = TooManyOuts;
+    fn try_from(v: Vec<Out>) -> Result<Self, TooManyOuts> {
+        if v.len() > 4 {
+            Err(TooManyOuts)
+        } else {
+            let mut vs = v.into_iter();
+            Ok(Outs {
+                normal: vs.next().unwrap_or_default(),
+                shift: vs.next().unwrap_or_default(),
+                altgr: vs.next().unwrap_or_default(),
+                altgr_shift: vs.next().unwrap_or_default(),
+            })
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Out {
+    Char(char),
+    Special(Box<str>),
+}
+
+impl Default for Out {
+    fn default() -> Self {
+        Out::Char('\0')
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Special {
+    Deadkey {
+        deadkey: char,
+    }
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Metadata {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub short: String,
+    #[serde(default)]
+    pub locale: String,
+    #[serde(default)]
+    pub version: String,
+    #[serde(default)]
+    pub author: String,
+}
+
+#[cfg(all(feature = "windows", feature = "linux"))]
 pub mod convert {
     use crate::linux::Key;
     use crate::klc::ScanCode;

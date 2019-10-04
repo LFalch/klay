@@ -1,4 +1,4 @@
-use key_layout::linux::char_to_name;
+use klay::linux::char_to_name;
 
 use std::env::args;
 use std::convert::TryFrom;
